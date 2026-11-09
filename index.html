@@ -51,6 +51,17 @@ tbody tr:last-child td{border-bottom:0}
 .pill{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.72rem;font-weight:700;color:#fff;margin-right:8px;text-transform:uppercase;letter-spacing:.03em}
 .btn2{padding:11px 14px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:10px;font:inherit;font-weight:600;cursor:pointer;transition:.15s}
 .btn2:hover{border-color:var(--pri);color:var(--pri)}
+input[type="date"],input[type="datetime-local"]{min-width:0;max-width:100%;-webkit-appearance:none;appearance:none}
+.status{margin:0 auto 14px;width:fit-content;padding:6px 14px;border-radius:99px;font-size:.85rem;font-weight:600;background:color-mix(in srgb,var(--mut) 14%,transparent);color:var(--mut)}
+.status.on{background:color-mix(in srgb,var(--on) 15%,transparent);color:var(--on)}
+.status.off{background:color-mix(in srgb,var(--off) 13%,transparent);color:var(--off)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;box-shadow:var(--sh)}
+.stat b{display:block;font-size:1.25rem;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.stat span{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mut);font-weight:600}
+.card{animation:rise .25s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.card{animation:none}}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -68,16 +79,28 @@ tbody tr:last-child td{border-bottom:0}
   <section id="rider">
     <div class="card">
       <div class="clock"><div id="clock"></div><div id="today"></div></div>
-      <label for="name">Your name</label>
-      <input id="name" placeholder="e.g. Ali" autocomplete="name">
+      <div class="status" id="status" hidden></div>
+      <div id="signin">
+        <label for="u-name">Username</label>
+        <input id="u-name" placeholder="Your username" autocomplete="off" autocapitalize="none">
+        <label for="u-pin" style="margin-top:10px">PIN</label>
+        <input id="u-pin" type="password" inputmode="numeric" maxlength="4" placeholder="4-digit PIN" autocomplete="off">
+        <button class="btn2" id="u-go" style="width:100%;margin-top:12px">Sign in</button>
+        <div id="u-err" class="err" style="font-size:.88rem;margin-top:8px"></div>
+      </div>
+      <div id="who" hidden style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span>Signed in as <strong id="who-n"></strong></span><a href="#" id="u-out" style="color:var(--mut);font-size:.85rem">Switch rider</a></div>
+      <div id="namebox"><label for="name">Your name</label>
+      <input id="name" placeholder="e.g. Ali" autocomplete="name"></div>
       <label class="chk" id="cwrap" hidden><input type="checkbox" id="custom"> Add a different date and time (admin only)</label>
       <input type="datetime-local" id="when" hidden>
-      <div class="row" style="margin-top:12px">
+      <div class="row" id="act" hidden style="margin-top:12px">
         <button class="big go-on" id="b-on">Go online</button>
         <button class="big go-off" id="b-off">Go offline</button>
       </div>
       <div id="msg" role="status"></div>
+      <button class="btn2" id="undo" hidden style="width:100%;margin-top:10px">Undo last tap</button>
     </div>
+    <div class="card"><strong>Your hours this week</strong><div id="mine"></div></div>
     <div class="card">
       <strong>Latest activity</strong>
       <div class="feed" id="feed"></div>
@@ -95,13 +118,25 @@ tbody tr:last-child td{border-bottom:0}
         <div style="display:flex;align-items:flex-end"><button class="btn2" id="csv" style="width:100%">Download CSV</button></div>
       </div>
     </div>
-    <div class="card"><strong>Hourly rates (£)</strong><div id="rates"></div></div>
+    <div class="stats" id="stats"></div>
+    <div class="card"><strong>Hours per day (last 7 days)</strong><div id="chart"></div></div>
+    <div class="card" id="ap-card"><strong>Approved riders</strong>
+      <div class="row" style="margin:10px 0"><input id="a-user" placeholder="Username" autocapitalize="none" autocomplete="off"><input id="a-pin" inputmode="numeric" maxlength="4" placeholder="4-digit PIN" autocomplete="off"></div>
+      <button class="btn2" id="a-add" style="width:100%">Add rider</button>
+      <div id="a-msg" class="err" style="font-size:.88rem;margin:8px 0"></div>
+      <div id="a-list"></div></div>
+    <div class="card"><strong>Hourly rates (£)</strong><div id="rate-msg" class="err" style="font-size:.85rem"></div><div id="rates"></div></div>
     <div class="card"><strong>Extras / bonus (£)</strong>
       <div class="row" style="margin:10px 0"><select id="x-rider"></select><input type="date" id="x-date"></div>
       <div class="row"><input type="number" step="0.01" min="0" id="x-amt" placeholder="£ extra"><input id="x-note" placeholder="Note (optional)"></div>
       <button class="btn2" id="x-add" style="width:100%;margin:10px 0">Add extra</button>
       <div id="x-list"></div></div>
     <div class="card"><strong>Total hours and pay</strong><div id="totals"></div></div>
+    <div class="card"><strong>Fix a time (admin)</strong>
+      <div class="row" style="margin:10px 0"><select id="e-rider"></select><select id="e-type"><option value="online">Online</option><option value="offline">Offline</option></select></div>
+      <input type="datetime-local" id="e-when">
+      <button class="btn2" id="e-add" style="width:100%;margin:10px 0">Add missing entry</button>
+      <div id="e-list"></div></div>
     <div class="card scroll">
       <table>
         <thead><tr><th>Date</th><th>Rider</th><th>Online</th><th>Offline</th><th>Hours</th><th>Pay</th></tr></thead>
@@ -111,11 +146,17 @@ tbody tr:last-child td{border-bottom:0}
   </section>
 </div>
 
+<div id="pinbox" hidden style="display:flex;gap:8px;max-width:280px;margin:0 auto 8px;padding:0 16px"><input type="password" inputmode="numeric" id="pin" placeholder="Admin PIN" autocomplete="off"><button class="btn2" id="pin-go">Open</button></div>
+<div id="pin-err" class="err" style="text-align:center;font-size:.85rem"></div>
+<div style="text-align:center;padding:0 0 28px"><a href="#" id="unlock" hidden style="color:var(--mut);font-size:.85rem">Admin login</a><a href="#" id="logout" hidden style="color:var(--mut);font-size:.85rem">Admin logout</a></div>
 <script>
 const $=s=>document.querySelector(s);
+const ADMIN_PIN='4826';
+const REQUIRE_LOGIN=false;
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
-let logs=[],coll=null,user=null,dbOk=false,dbRef=null,rates={},ratesColl=null,extras=[],extrasColl=null;
+let logs=[],coll=null,user=null,dbOk=false,dbRef=null,rates={},ratesColl=null,extras=[],extrasColl=null,inactive={},inactiveColl=null,riders={},ridersColl=null,me=null;
 const money=n=>'£'+n.toFixed(2);
+const rk=n=>String(n).toLowerCase().replace(/[^a-z0-9_.-]+/g,'-');
 
 const fD=t=>new Date(t).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
 const fT=t=>new Date(t).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
@@ -132,7 +173,7 @@ $('#name').value=store.get('qu-rider-name')||'';
 
 async function logIt(type){
   const name=$('#name').value.trim();
-  if(!name){msg('Please enter your name first.','err');return;}
+  if(!name){msg(REQUIRE_LOGIN?'Please sign in first.':'Please enter your name first.','err');return;}
   let ts=Date.now();
   if($('#custom').checked){
     const v=$('#when').value;
@@ -140,6 +181,13 @@ async function logIt(type){
     ts=new Date(v).getTime();
   }
   store.set('qu-rider-name',name);
+  if(!$('#custom').checked){
+    if(REQUIRE_LOGIN&&!riders[rk(name)]){msg('Rider not found. Ask the admin.','err');return;}
+    if(inactive[rk(name)]){msg('This rider is deactivated. Please contact the admin.','err');return;}
+    const last=logs.filter(l=>String(l.name).toLowerCase()===name.toLowerCase()).sort((a,b)=>b.ts-a.ts)[0];
+    if(last&&last.type===type){msg('You are already '+type+' since '+fT(last.ts)+'.','err');return;}
+    if(!last&&type==='offline'){msg('No online entry found. Tap Go online first, or ask the admin.','err');return;}
+  }
   const entry={name,type,ts};
   try{
     if(coll){await coll.add(entry);}
@@ -182,37 +230,54 @@ function render(){
 
   // rider filter
   const sel=$('#f-rider'),cur=sel.value;
-  const names=[...new Map(logs.map(l=>[String(l.name).toLowerCase(),l.name])).entries()];
+  const names=[...new Map(logs.map(l=>[String(l.name).toLowerCase(),l.name]).concat(REQUIRE_LOGIN?Object.values(riders).map(r=>[String(r.name).toLowerCase(),r.name]):[])).entries()];
   sel.innerHTML='<option value="">All riders</option>'+names.map(([k,n])=>'<option value="'+esc(k)+'">'+esc(n)+'</option>').join('');
   sel.value=cur;
 
   const ss=filtered(),tot={};
   $('#rows').innerHTML=ss.map(s=>{
     const h=s.on&&s.off?dur(s.off-s.on):'';
-    const k=s.name.toLowerCase(),rt=rates[k]||0,pay=h?(s.off-s.on)/36e5*rt:0;if(h){tot[k]=tot[k]||{n:s.name,ms:0,pay:0};tot[k].ms+=s.off-s.on;tot[k].pay+=pay;}
-    return '<tr><td>'+fD(s.on||s.off)+'</td><td>'+esc(s.name)+'</td><td>'+(s.on?fT(s.on):'<span class="tag">missing</span>')+'</td><td>'+(s.off?fT(s.off):'<span class="tag">still online</span>')+'</td><td>'+h+'</td><td>'+(h&&rt?money(pay):'')+'</td></tr>';
+    const k=s.name.toLowerCase(),rt=rates[rk(s.name)]||0,pay=h?Math.round((s.off-s.on)/36e5*rt*100)/100:0;if(h){tot[k]=tot[k]||{n:s.name,ms:0,pay:0};tot[k].ms+=s.off-s.on;tot[k].pay+=pay;}
+    return '<tr><td>'+fD(s.on||s.off)+'</td><td>'+esc(s.name)+'</td><td>'+(s.on?fT(s.on):'<span class="tag">missing</span>')+'</td><td>'+(s.off?fT(s.off):'<span class="tag">still online</span>')+'</td><td>'+h+'</td><td>'+(h?(rt?money(pay):'<span class="tag">set rate</span>'):'')+'</td></tr>';
   }).join('')||'<tr><td colspan="6" style="color:var(--mut)">No entries for this filter.</td></tr>';
   const xs=xsF();xs.forEach(x=>{tot[x.k]=tot[x.k]||{n:x.name,ms:0,pay:0};tot[x.k].pay+=x.amt;});
-  $('#totals').innerHTML=(Object.values(tot).map(t=>'<div class="tot"><span>'+esc(t.n)+'</span><strong>'+dur(t.ms)+' · '+money(t.pay)+'</strong></div>').join('')+(Object.keys(tot).length?'<div class="tot"><strong>Total</strong><strong>'+money(Object.values(tot).reduce((a,t)=>a+t.pay,0))+'</strong></div>':''))||'<div style="color:var(--mut)">Nothing to total yet.</div>';
-  renderRates(names);renderExtras(names,xs);
+  $('#totals').innerHTML=(Object.values(tot).map(t=>'<div class="tot"><span>'+esc(t.n)+'</span><span><strong>'+dur(t.ms)+' · '+money(t.pay)+'</strong> <button class="btn2" data-exp="'+esc(t.n.toLowerCase())+'" style="padding:6px 10px">CSV</button></span></div>').join('')+(Object.keys(tot).length?'<div class="tot"><strong>Total</strong><strong>'+money(Object.values(tot).reduce((a,t)=>a+t.pay,0))+'</strong></div>':''))||'<div style="color:var(--mut)">Nothing to total yet.</div>';
+  renderRates(names);renderExtras(names,xs);renderFix(names);renderStatus();renderMine();renderChart();renderRiders();
+  const TT=Object.values(tot);
+  $('#stats').innerHTML='<div class="stat"><span>Riders</span><b>'+TT.length+'</b></div><div class="stat"><span>Hours</span><b>'+dur(TT.reduce((a,t)=>a+t.ms,0))+'</b></div><div class="stat"><span>Total pay</span><b>'+money(TT.reduce((a,t)=>a+t.pay,0))+'</b></div>';
 }
 ['#f-from','#f-to','#f-rider'].forEach(s=>$(s).onchange=render);
 
 function renderRates(names){
   const box=$('#rates');if(!box||box.contains(document.activeElement))return;
-  box.innerHTML=names.map(([k,n])=>'<div class="tot"><span>'+esc(n)+'</span><span><input type="number" step="0.01" min="0" data-k="'+esc(k)+'" data-n="'+esc(n)+'" value="'+(rates[k]||'')+'" placeholder="£/hr" style="width:90px"> <button class="btn2" data-rm="'+esc(k)+'" style="padding:8px 10px">Remove</button></span></div>').join('')||'<div style="color:var(--mut)">Riders appear here after their first entry.</div>';
+  box.innerHTML=names.map(([k,n])=>'<div class="tot"><span>'+esc(n)+(inactive[rk(k)]?' <span class="tag">inactive</span>':'')+'</span><span><input type="number" step="0.01" min="0" data-k="'+esc(k)+'" data-n="'+esc(n)+'" value="'+(rates[rk(k)]||'')+'" placeholder="£/hr" style="width:80px"> <button class="btn2" data-save="'+esc(k)+'" style="padding:8px 10px">'+(savedK===k?'Saved ✓':'Save')+'</button> '+(inactive[rk(k)]?'<button class="btn2" data-act="'+esc(k)+'" style="padding:8px 10px">Reactivate</button> <button class="btn2" data-rm="'+esc(k)+'" style="padding:8px 10px">Delete</button>':'<button class="btn2" data-deact="'+esc(k)+'" style="padding:8px 10px">Deactivate</button>')+'</span></div>').join('')||'<div style="color:var(--mut)">Riders appear here after their first entry.</div>';
 }
-$('#rates').addEventListener('change',async e=>{
-  const i=e.target;if(!i.dataset.k)return;
-  const v=parseFloat(i.value),r=isNaN(v)?0:v;
-  if(!ratesColl){rates[i.dataset.k]=r;render();return;}
-  try{await ratesColl.doc(i.dataset.k).set({name:i.dataset.n,rate:r});}catch(err){}
-});
+let savedK=null;
+async function setActive(b){
+  const k=b.dataset.deact||b.dataset.act,off=!!b.dataset.deact;
+  try{
+    if(inactiveColl){if(off)await inactiveColl.doc(rk(k)).set({name:k});else await inactiveColl.doc(rk(k)).delete();}
+    else{if(off)inactive[rk(k)]=true;else delete inactive[rk(k)];}
+  }catch(err){$('#rate-msg').textContent='Could not update the rider.';}
+  render();
+}
+async function saveRate(b){
+  const k=b.dataset.save,i=$('#rates').querySelector('input[data-k="'+k.replace(/"/g,'')+'"]');
+  if(!i)return;
+  const v=parseFloat(i.value);
+  if(isNaN(v)||v<0)return;
+  try{
+    if(ratesColl)await ratesColl.doc(rk(k)).set({name:i.dataset.n,rate:v});else rates[rk(k)]=v;
+    $('#rate-msg').textContent='';
+    savedK=k;render();
+    setTimeout(()=>{savedK=null;render();},1500);
+  }catch(err){$('#rate-msg').textContent='Could not save the rate. Only an admin can save rates.';}
+}
 
 $('#csv').onclick=async()=>{
   const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
   const lines=['Date,Rider,Online,Offline,Hours,Pay'].concat(filtered().map(s=>[
-    dKey(s.on||s.off),q(s.name),s.on?fT(s.on):'',s.off?fT(s.off):'',s.on&&s.off?((s.off-s.on)/36e5).toFixed(2):'',s.on&&s.off&&rates[s.name.toLowerCase()]?((s.off-s.on)/36e5*rates[s.name.toLowerCase()]).toFixed(2):''
+    dKey(s.on||s.off),q(s.name),s.on?fT(s.on):'',s.off?fT(s.off):'',s.on&&s.off?((s.off-s.on)/36e5).toFixed(2):'',s.on&&s.off&&rates[rk(s.name)]?((s.off-s.on)/36e5*rates[rk(s.name)]).toFixed(2):''
   ].join(','))).concat(xsF().map(x=>[x.date,q(x.name),q('Extra '+(x.note||'')),'','',x.amt.toFixed(2)].join(',')));
   try{
     const d=await window.claude.use('downloads');
@@ -227,7 +292,7 @@ function xsF(){
 }
 function renderExtras(names,xs){
   const s=$('#x-rider');
-  if(s&&!s.contains(document.activeElement)){const c=s.value;s.innerHTML=names.map(([k,n])=>'<option value="'+esc(k)+'">'+esc(n)+'</option>').join('');s.value=c;}
+  if(s&&!s.contains(document.activeElement)){const c=s.value;s.innerHTML=names.map(([k,n])=>'<option value="'+esc(k)+'">'+esc(n)+'</option>').join('');if(c)s.value=c;}
   $('#x-list').innerHTML=xs.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(x=>'<div class="tot"><span>'+esc(x.name)+' · '+x.date+(x.note?' · '+esc(x.note):'')+'</span><span>'+money(x.amt)+' <button class="btn2" data-del="'+esc(x.id)+'" style="padding:2px 8px">✕</button></span></div>').join('');
 }
 $('#x-add').onclick=async()=>{
@@ -253,11 +318,13 @@ async function removeRider(k){
   try{
     if(coll)await Promise.all(logs.filter(mine).map(l=>coll.doc(l.id).delete()));else logs=logs.filter(l=>!mine(l));
     if(extrasColl)await Promise.all(extras.filter(x=>x.k===k).map(x=>extrasColl.doc(x.id).delete()));else extras=extras.filter(x=>x.k!==k);
-    if(ratesColl)await ratesColl.doc(k).delete();else delete rates[k];
+    if(ratesColl)await ratesColl.doc(rk(k)).delete();else delete rates[rk(k)];
   }catch(err){}
   render();
 }
 $('#rates').addEventListener('click',e=>{
+  const sb=e.target.closest('[data-save]');if(sb){saveRate(sb);return;}
+  const da=e.target.closest('[data-deact],[data-act]');if(da){setActive(da);return;}
   const b=e.target.closest('[data-rm]');if(!b)return;
   if(b.dataset.arm!=='1'){
     b.dataset.arm='1';b.textContent='Confirm remove?';b.style.color='var(--off)';
@@ -267,13 +334,154 @@ $('#rates').addEventListener('click',e=>{
   removeRider(b.dataset.rm);
 });
 
+const toLocal=t=>{const d=new Date(t);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16);};
+function renderFix(names){
+  const s=$('#e-rider');
+  if(s&&!s.contains(document.activeElement)){const c=s.value;s.innerHTML=names.map(([k,n])=>'<option value="'+esc(n)+'">'+esc(n)+'</option>').join('');if(c)s.value=c;}
+  const box=$('#e-list');if(box.contains(document.activeElement))return;
+  const f=$('#f-from').value,t=$('#f-to').value,r=$('#f-rider').value;
+  const ls=logs.filter(l=>{const k=dKey(l.ts);return (!f||k>=f)&&(!t||k<=t)&&(!r||String(l.name).toLowerCase()===r);}).sort((a,b)=>b.ts-a.ts).slice(0,30);
+  box.innerHTML=ls.map(l=>'<div class="tot" style="flex-wrap:wrap"><span><span class="pill" style="background:var(--'+(l.type==='online'?'on':'off')+')">'+esc(l.type)+'</span>'+esc(l.name)+'</span><span><input type="datetime-local" data-id="'+esc(l.id)+'" value="'+toLocal(l.ts)+'" style="width:auto;padding:8px"> <button class="btn2" data-save="'+esc(l.id)+'" style="padding:8px 10px">Save</button> <button class="btn2" data-del="'+esc(l.id)+'" style="padding:8px 10px">✕</button></span></div>').join('')||'<div style="color:var(--mut)">No entries for this filter.</div>';
+}
+$('#e-add').onclick=async()=>{
+  const name=$('#e-rider').value,v=$('#e-when').value;
+  if(!name||!v)return;
+  const e={name,type:$('#e-type').value,ts:new Date(v).getTime()};
+  try{if(coll)await coll.add(e);else{logs.push({id:String(Math.random()),...e});render();}$('#e-when').value='';}catch(err){}
+};
+$('#e-list').addEventListener('click',async ev=>{
+  const b=ev.target.closest('button');if(!b)return;
+  const id=b.dataset.save||b.dataset.del;if(!id)return;
+  const l=logs.find(x=>x.id===id);if(!l)return;
+  if(b.dataset.save){
+    const inp=$('#e-list').querySelector('input[data-id="'+id.replace(/"/g,'')+'"]');
+    const ts=inp?new Date(inp.value).getTime():NaN;if(isNaN(ts))return;
+    try{if(coll)await coll.doc(id).update({ts});else l.ts=ts;}catch(err){}
+    if(document.activeElement)document.activeElement.blur();
+    render();return;
+  }
+  if(b.dataset.arm!=='1'){b.dataset.arm='1';b.textContent='Sure?';b.style.color='var(--off)';setTimeout(()=>{if(b.isConnected){b.dataset.arm='';b.textContent='✕';b.style.color='';}},4000);return;}
+  if(document.activeElement)document.activeElement.blur();
+  try{if(coll)await coll.doc(id).delete();else logs=logs.filter(x=>x.id!==id);}catch(err){}
+  render();
+});
+
+function renderStatus(){
+  const el=$('#status'),n=$('#name').value.trim().toLowerCase();
+  const last=n?logs.filter(l=>String(l.name).toLowerCase()===n).sort((a,b)=>b.ts-a.ts)[0]:null;
+  $('#undo').hidden=!(last&&Date.now()-last.ts<120000&&last.ts<=Date.now()+5000);
+  if(!last){el.hidden=true;return;}
+  el.hidden=false;
+  el.className='status '+(last.type==='online'?'on':'off');
+  el.textContent=last.type==='online'?'You are online since '+fT(last.ts):'You are offline (last: '+fT(last.ts)+')';
+}
+$('#name').addEventListener('input',()=>{renderStatus();renderMine();});
+
+function weekStart(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime();}
+function renderMine(){
+  const n=$('#name').value.trim().toLowerCase(),box=$('#mine');
+  if(!n){box.innerHTML='<div style="color:var(--mut)">Enter your name to see your hours.</div>';return;}
+  const ws=weekStart(),ss=sessions().filter(s=>s.name.toLowerCase()===n&&s.on&&s.off&&s.on>=ws);
+  const ms=ss.reduce((a,s)=>a+s.off-s.on,0);
+  box.innerHTML='<div class="tot"><span>Total this week</span><strong>'+dur(ms)+'</strong></div>'+ss.map(s=>'<div class="tot"><span>'+fD(s.on)+'</span><span>'+fT(s.on)+' – '+fT(s.off)+' · '+dur(s.off-s.on)+'</span></div>').join('');
+}
+function renderChart(){
+  const days=[],r=$('#f-rider').value,all=sessions();
+  for(let i=6;i>=0;i--){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-i);days.push(d.getTime());}
+  const v=days.map(t=>all.filter(s=>s.on&&s.off&&s.on>=t&&s.on<t+864e5&&(!r||s.name.toLowerCase()===r)).reduce((a,s)=>a+s.off-s.on,0)/36e5);
+  const mx=Math.max(...v,1);
+  $('#chart').innerHTML='<div style="display:flex;align-items:flex-end;gap:8px;height:120px">'+v.map((h,i)=>'<div style="flex:1;text-align:center;font-size:.7rem;color:var(--mut)"><div style="height:'+Math.round(h/mx*80)+'px;min-height:2px;background:var(--pri);border-radius:6px 6px 0 0"></div>'+h.toFixed(1)+'<br>'+new Date(days[i]).toLocaleDateString('en-GB',{weekday:'short'})+'</div>').join('')+'</div>';
+}
+$('#undo').onclick=async()=>{
+  const n=$('#name').value.trim().toLowerCase();
+  const last=logs.filter(l=>String(l.name).toLowerCase()===n).sort((a,b)=>b.ts-a.ts)[0];
+  if(!last||Date.now()-last.ts>=120000)return;
+  try{if(coll)await coll.doc(last.id).delete();else logs=logs.filter(l=>l.id!==last.id);}catch(err){msg('Could not undo.','err');return;}
+  msg('Last entry undone.','ok');render();
+};
+$('#totals').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-exp]');if(!b)return;
+  const k=b.dataset.exp,q=v=>'"'+String(v).replace(/"/g,'""')+'"';
+  let tp=0,tm=0;
+  const lines=['Date,Rider,Online,Offline,Hours,Pay'].concat(filtered().filter(s=>s.name.toLowerCase()===k).map(s=>{
+    const h=s.on&&s.off,rt=rates[rk(s.name)]||0,p=h?Math.round((s.off-s.on)/36e5*rt*100)/100:0;
+    if(h){tp+=p;tm+=s.off-s.on;}
+    return [dKey(s.on||s.off),q(s.name),s.on?fT(s.on):'',s.off?fT(s.off):'',h?((s.off-s.on)/36e5).toFixed(2):'',h?p.toFixed(2):''].join(',');
+  }));
+  xsF().filter(x=>x.k===k).forEach(x=>{tp+=x.amt;lines.push([x.date,q(x.name),q('Extra '+(x.note||'')),'','',x.amt.toFixed(2)].join(','));});
+  lines.push(['','Total','','',(tm/36e5).toFixed(2),tp.toFixed(2)].join(','));
+  try{const d=await window.claude.use('downloads');if(d)await d.save({filename:'payslip-'+rk(k)+'.csv',data:lines.join('\n')});}catch(err){}
+});
+setInterval(renderStatus,5000);
+
+async function sha(s){try{const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');}catch(e){let h=5381;for(const c of s)h=((h<<5)+h+c.charCodeAt(0))|0;return 'f'+h;}}
+const pinHash=(u,p)=>sha('quickup:'+rk(u)+':'+p);
+function renderAuth(){
+  $('#ap-card').hidden=!REQUIRE_LOGIN;
+  if(!REQUIRE_LOGIN){$('#signin').hidden=true;$('#who').hidden=true;$('#act').hidden=false;$('#namebox').hidden=false;return;}
+  $('#namebox').hidden=true;
+  const on=!!me;
+  $('#signin').hidden=on;$('#who').hidden=!on;$('#act').hidden=!on;
+  $('#name').value=on?me.name:'';
+  if(on)$('#who-n').textContent=me.name;
+}
+$('#u-go').onclick=async()=>{
+  const u=$('#u-name').value.trim(),p=$('#u-pin').value.trim(),r=riders[rk(u)],e=$('#u-err');
+  if(!u||!p){e.textContent='Enter your username and PIN.';return;}
+  if(!r||r.pinHash!==await pinHash(r.name,p)){e.textContent='Wrong username or PIN.';return;}
+  if(inactive[rk(u)]){e.textContent='This rider is deactivated. Please contact the admin.';return;}
+  me={name:r.name};store.set('qu-rider',JSON.stringify(me));
+  e.textContent='';$('#u-name').value='';$('#u-pin').value='';
+  renderAuth();render();
+};
+$('#u-out').onclick=ev=>{ev.preventDefault();me=null;store.set('qu-rider','');renderAuth();render();};
+const am=(t,ok)=>{const m=$('#a-msg');m.textContent=t;m.className=ok?'ok':'err';};
+async function saveRider(u,p){
+  const r={name:u,pinHash:await pinHash(u,p)};
+  if(ridersColl)await ridersColl.doc(rk(u)).set(r);
+  else{riders[rk(u)]=r;store.set('qu-riders',JSON.stringify(riders));}
+}
+$('#a-add').onclick=async()=>{
+  const u=$('#a-user').value.trim(),p=$('#a-pin').value.trim();
+  if(!u||!/^\d{4}$/.test(p)){am('Enter a username and a 4-digit PIN.');return;}
+  if(riders[rk(u)]){am('That username already exists.');return;}
+  try{await saveRider(u,p);am(u+' added.',true);$('#a-user').value='';$('#a-pin').value='';render();}catch(e){am('Could not save the rider.');}
+};
+function renderRiders(){
+  const box=$('#a-list');if(box.contains(document.activeElement))return;
+  box.innerHTML=Object.entries(riders).map(([id,r])=>'<div class="tot"><span>'+esc(r.name)+'</span><span><input inputmode="numeric" maxlength="4" data-p="'+esc(id)+'" placeholder="New PIN" style="width:90px"> <button class="btn2" data-reset="'+esc(id)+'" style="padding:8px 10px">Reset</button> <button class="btn2" data-rmr="'+esc(id)+'" style="padding:8px 10px">Remove</button></span></div>').join('')||'<div style="color:var(--mut)">No riders yet. Add the first one above.</div>';
+}
+$('#a-list').addEventListener('click',async e=>{
+  const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.reset){
+    const id=b.dataset.reset,i=$('#a-list').querySelector('input[data-p="'+id.replace(/"/g,'')+'"]'),p=i?i.value.trim():'';
+    if(!/^\d{4}$/.test(p)){am('New PIN must be 4 digits.');return;}
+    try{await saveRider(riders[id].name,p);am('PIN updated for '+riders[id].name+'.',true);if(i)i.value='';}catch(err){am('Could not update the PIN.');}
+    return;
+  }
+  if(b.dataset.rmr){
+    if(b.dataset.arm!=='1'){b.dataset.arm='1';b.textContent='Sure?';b.style.color='var(--off)';setTimeout(()=>{if(b.isConnected){b.dataset.arm='';b.textContent='Remove';b.style.color='';}},4000);return;}
+    try{if(ridersColl)await ridersColl.doc(b.dataset.rmr).delete();else{delete riders[b.dataset.rmr];store.set('qu-riders',JSON.stringify(riders));}}catch(err){}
+    render();
+  }
+});
+
 function tab(which){
+  if(which==='admin'&&$('#t-admin').hidden)return;
   const a=which==='admin';
   $('#rider').hidden=a;$('#admin').hidden=!a;
   $('#t-rider').setAttribute('aria-selected',String(!a));
   $('#t-admin').setAttribute('aria-selected',String(a));
 }
 $('#t-rider').onclick=()=>tab('rider');
+$('#unlock').onclick=e=>{e.preventDefault();$('#pinbox').hidden=false;$('#pin').focus();};
+$('#pin').addEventListener('keydown',e=>{if(e.key==='Enter')$('#pin-go').click();});
+$('#pin-go').onclick=()=>{
+  const p=$('#pin').value.trim();
+  if(p===ADMIN_PIN){$('#pinbox').hidden=true;$('#pin').value='';$('#pin-err').textContent='';store.set('qu-admin','1');$('#t-admin').hidden=false;$('#cwrap').hidden=false;$('#unlock').hidden=true;$('#logout').hidden=false;tab('admin');}
+  else $('#pin-err').textContent='Wrong PIN. Try again.';
+};
+$('#logout').onclick=e=>{e.preventDefault();store.set('qu-admin','');$('#t-admin').hidden=true;$('#cwrap').hidden=true;$('#custom').checked=false;$('#when').hidden=true;$('#logout').hidden=true;$('#unlock').hidden=false;tab('rider');};
 $('#t-admin').onclick=()=>tab('admin');
 
 (async()=>{
@@ -281,15 +489,20 @@ $('#t-admin').onclick=()=>tab('admin');
   try{
     const db=window.claude&&await window.claude.use('db');
     if(db){
-      dbOk=true;dbRef=db;coll=db.collection('logs');
+      dbOk=true;dbRef=db;coll=db.collection('logs');ridersColl=db.collection('riders');ridersColl.onSnapshot(s=>{riders={};s.docs.forEach(d=>{riders[d.id]=d.data();});render();},()=>{});inactiveColl=db.collection('inactive');inactiveColl.onSnapshot(s=>{inactive={};s.docs.forEach(d=>{inactive[d.id]=true;});render();},()=>{});
       coll.orderBy('ts','asc').onSnapshot(s=>{logs=s.docs.map(d=>({id:d.id,...d.data()}));render();},()=>msg('Live data unavailable.','err'));
     }
   }catch(e){}
   try{user=window.claude&&await window.claude.use('user');}catch(e){}
+  if(!dbOk){try{riders=JSON.parse(store.get('qu-riders')||'{}');}catch(e){}}
+  try{const sv=JSON.parse(store.get('qu-rider')||'null');if(sv&&sv.name)me=sv;}catch(e){}
+  renderAuth();render();
   if(!dbOk)$('#mode').textContent='Demo mode: entries are not saved.';
-  const isAdmin=!dbOk||!user||user.canEdit()!==false;
+  const isAdmin=dbOk?(!user||user.canEdit()!==false):store.get('qu-admin')==='1';
+  if(!dbOk)$('#unlock').hidden=isAdmin;
   if(!isAdmin)$('#t-admin').hidden=true;
   if(isAdmin)$('#cwrap').hidden=false;
+  if(isAdmin&&!dbOk){$('#logout').hidden=false;tab('admin');}
   if(dbOk&&isAdmin){extrasColl=dbRef.collection('extras');extrasColl.onSnapshot(s=>{extras=s.docs.map(d=>({id:d.id,...d.data()}));render();},()=>{});ratesColl=dbRef.collection('rates');ratesColl.onSnapshot(s=>{rates={};s.docs.forEach(d=>{rates[d.id]=Number(d.data().rate)||0;});render();},()=>{});}
 })();
 </script>
